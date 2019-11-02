@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.jfoenix.controls.*?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<AnchorPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="400.0" prefWidth="600.0"
+            xmlns="http://javafx.com/javafx/11.0.1">
+    <children>
+        <VBox layoutX="150.0" layoutY="54.0" spacing="50.0">
+            <children>
+                <JFXTextField fx:id="nameField" prefWidth="300.0" promptText="Введите название"/>
+                <JFXTextField fx:id="yearField" prefWidth="300.0" promptText="Введите год издания"/>
+                <JFXTextField fx:id="authorField" prefWidth="300.0" promptText="Введите автора"/>
+                <JFXTextField fx:id="ratingField" prefWidth="300.0" promptText="Введите рейтинг"/>
+            </children>
+        </VBox>
+        <JFXButton fx:id="button" buttonType="RAISED" layoutX="210.0" layoutY="343.0" onAction="#action"
+                   prefHeight="43.0" prefWidth="180.0" style="-fx-background-color: #aaffaa;" text="Добавить"/>
+    </children>
+</AnchorPane>
