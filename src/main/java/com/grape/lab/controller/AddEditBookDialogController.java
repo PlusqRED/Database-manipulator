@@ -2,20 +2,26 @@ package com.grape.lab.controller;
 
 import com.grape.lab.dao.BookDao;
 import com.grape.lab.model.Book;
+import com.grape.lab.util.ActionLogger;
 import com.jfoenix.controls.JFXButton;
+import com.jfoenix.controls.JFXSpinner;
 import com.jfoenix.controls.JFXTextField;
 import com.jfoenix.validation.IntegerValidator;
 import com.jfoenix.validation.RequiredFieldValidator;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.stage.Stage;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 @Component
 public class AddEditBookDialogController {
+    private ActionLogger actionLogger;
     private Action action;
     private BookDao bookDao;
     @FXML
@@ -28,6 +34,8 @@ public class AddEditBookDialogController {
     private JFXTextField ratingField;
     @FXML
     private JFXButton button;
+    @FXML
+    private JFXSpinner spinner;
     private ObservableList<Book> targetList;
     private Stage stage;
     private Book selectedBook;
@@ -69,29 +77,43 @@ public class AddEditBookDialogController {
                     .rating(Integer.valueOf(ratingField.getText()))
                     .build();
             switch (action) {
-                case ADD:
-                    add(builderBook);
+                case ADD: {
+                    CompletableFuture
+                            .runAsync(() -> showingSpinner(true))
+                            .thenRun(() -> bookDao.add(builderBook))
+                            .thenRun(() -> Platform.runLater(targetList::clear))
+                            .thenRun(() -> Platform.runLater(parentController::loadData))
+                            .thenRun(() -> showingSpinner(false))
+                            .thenRun(() -> Platform.runLater(stage::close))
+                            .thenRun(() -> actionLogger.log("Book added"));
                     break;
-                case EDIT:
-                    edit(builderBook);
+                }
+                case EDIT: {
+                    CompletableFuture
+                            .runAsync(() -> showingSpinner(true))
+                            .thenRunAsync(() -> bookDao.delete(selectedBook.getId()))
+                            .thenRunAsync(() -> bookDao.add(builderBook))
+                            .thenRun(() -> Platform.runLater(targetList::clear))
+                            .thenRun(() -> Platform.runLater(parentController::loadData))
+                            .thenRun(() -> showingSpinner(false))
+                            .thenRun(() -> Platform.runLater(stage::close))
+                            .thenRun(() -> actionLogger.log("Book edited"));
                     break;
+                }
                 default:
                     throw new IllegalArgumentException();
             }
-            parentController.loadData();
-            stage.close();
         }
     }
 
-    private void edit(Book builderBook) {
-        bookDao.delete(selectedBook.getId());
-        bookDao.add(builderBook);
-        targetList.clear();
-    }
-
-    private void add(Book builderBook) {
-        bookDao.add(builderBook);
-        targetList.clear();
+    @SneakyThrows
+    private void showingSpinner(boolean showing) {
+        if (showing) {
+            Platform.runLater(() -> spinner.setVisible(true));
+        } else {
+            Platform.runLater(() -> spinner.setVisible(false));
+            Thread.sleep(200);
+        }
     }
 
     public void setButtonText(String text) {
@@ -125,6 +147,11 @@ public class AddEditBookDialogController {
     @Autowired
     public void setBookDao(BookDao bookDao) {
         this.bookDao = bookDao;
+    }
+
+    @Autowired
+    public void setActionLogger(ActionLogger actionLogger) {
+        this.actionLogger = actionLogger;
     }
 
     public enum Action {

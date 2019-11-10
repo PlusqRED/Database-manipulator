@@ -4,21 +4,26 @@ import com.grape.lab.dao.BookDao;
 import com.grape.lab.dao.LibraryDao;
 import com.grape.lab.model.Book;
 import com.grape.lab.model.Library;
+import com.grape.lab.util.ActionLogger;
 import com.jfoenix.controls.JFXComboBox;
+import com.jfoenix.controls.JFXSpinner;
 import com.jfoenix.controls.JFXTextField;
 import com.jfoenix.validation.IntegerValidator;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.stage.Stage;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Component
 public class AddLibraryDialogController {
-
+    private ActionLogger actionLogger;
     private LibraryDao libraryDao;
     private BookDao bookDao;
 
@@ -27,6 +32,9 @@ public class AddLibraryDialogController {
 
     @FXML
     private JFXTextField quantityField;
+
+    @FXML
+    private JFXSpinner spinner;
 
     private ObservableList<Library> targetList;
     private Stage stage;
@@ -42,15 +50,30 @@ public class AddLibraryDialogController {
     void add() {
         if (!bookComboBox.getSelectionModel().isEmpty() && quantityField.validate()) {
             String selectedItem = bookComboBox.getSelectionModel().getSelectedItem();
-            Book book = bookDao.findByNameIgnoreCase(selectedItem).get(0);
-            Library libraryToAdd = Library.builder()
-                    .book(book)
-                    .quantity(Integer.valueOf(quantityField.getText()))
-                    .build();
-            libraryDao.add(libraryToAdd);
-            targetList.clear();
-            parentController.loadLibraries();
-            stage.close();
+            CompletableFuture.supplyAsync(() -> {
+                showingSpinner(true);
+                return bookDao.findByNameIgnoreCase(selectedItem).get(0);
+            })
+                    .thenApply(book -> Library.builder()
+                            .book(book)
+                            .quantity(Integer.valueOf(quantityField.getText()))
+                            .build())
+                    .thenAccept(libraryDao::add)
+                    .thenRun(targetList::clear)
+                    .thenRun(parentController::loadLibraries)
+                    .thenRun(() -> showingSpinner(false))
+                    .thenRun(() -> Platform.runLater(stage::close))
+                    .thenRun(() -> actionLogger.log("Library added"));
+        }
+    }
+
+    @SneakyThrows
+    private void showingSpinner(boolean showing) {
+        if (showing) {
+            spinner.setVisible(true);
+        } else {
+            spinner.setVisible(false);
+            Thread.sleep(200);
         }
     }
 
@@ -77,5 +100,10 @@ public class AddLibraryDialogController {
     @Autowired
     public void setBookDao(BookDao bookDao) {
         this.bookDao = bookDao;
+    }
+
+    @Autowired
+    public void setActionLogger(ActionLogger actionLogger) {
+        this.actionLogger = actionLogger;
     }
 }

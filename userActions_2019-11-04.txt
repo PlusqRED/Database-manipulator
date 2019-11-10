@@ -1,0 +1,3 @@
+Book added
+Book removed
+Book searched

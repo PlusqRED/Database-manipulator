@@ -4,7 +4,9 @@ import com.grape.lab.dao.BookDao;
 import com.grape.lab.dao.LibraryDao;
 import com.grape.lab.model.Book;
 import com.grape.lab.model.Library;
+import com.grape.lab.util.ActionLogger;
 import com.jfoenix.controls.JFXTextField;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -25,13 +27,14 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static java.util.Comparator.comparing;
 
 @Component
 public class MainController {
-
+    private ActionLogger actionLogger;
     private final BookDao bookDao;
     private final LibraryDao libraryDao;
     private AddEditBookDialogController addEditBookDialogController;
@@ -61,7 +64,8 @@ public class MainController {
 
     public void customSort() {
         ObservableList<Book> itemsToSort = bookTableView.getItems();
-        Comparator<Book> comparator = comparing(Book::getName).thenComparing(Book::getYear);
+        Comparator<Book> comparator = comparing(Book::getName)
+                .thenComparing(Book::getYear);
         if (reversedCustomSort) {
             comparator = comparator.reversed();
         }
@@ -138,9 +142,11 @@ public class MainController {
     @FXML
     void bookRemove() {
         if (!bookTableView.getSelectionModel().isEmpty()) {
-            bookDao.delete(bookTableView.getSelectionModel().getSelectedItem().getId());
-            bookTableView.getItems().clear();
-            loadData();
+            Integer selectedId = bookTableView.getSelectionModel().getSelectedItem().getId();
+            CompletableFuture.runAsync(() -> bookDao.delete(selectedId))
+                    .thenRun(() -> Platform.runLater(bookTableView.getItems()::clear))
+                    .thenRun(() -> Platform.runLater(this::loadData))
+                    .thenRun(() -> actionLogger.log("Book removed"));
         }
     }
 
@@ -154,6 +160,7 @@ public class MainController {
         PrintWriter writer = new PrintWriter(new FileOutputStream("books.csv"), true);
         writer.println(header);
         books.forEach(book -> printBook(writer, book));
+        actionLogger.log("Books saved to file");
     }
 
     private void printBook(PrintWriter writer, Book book) {
@@ -169,12 +176,14 @@ public class MainController {
     @FXML
     void bookSearchByName() {
         String searchText = bookSearchField.getText().trim();
+        ObservableList<Book> items = bookTableView.getItems();
         if (!searchText.isEmpty()) {
-            List<Book> foundBooks = bookDao.findByNameIgnoreCase(searchText);
-            bookTableView.getItems().clear();
-            bookTableView.getItems().addAll(foundBooks);
+            items.clear();
+            CompletableFuture.supplyAsync(() -> bookDao.findByNameIgnoreCase(searchText))
+                    .thenAccept(items::addAll)
+                    .thenRun(() -> actionLogger.log("Book searched"));
         } else {
-            bookTableView.getItems().clear();
+            items.clear();
             loadData();
         }
     }
@@ -205,9 +214,10 @@ public class MainController {
     public void libraryDelete() {
         if (!libraryTableView.getSelectionModel().isEmpty()) {
             Library selectedItem = libraryTableView.getSelectionModel().getSelectedItem();
-            libraryDao.delete(selectedItem);
-            libraryTableView.getItems().clear();
-            loadLibraries();
+            CompletableFuture.runAsync(() -> libraryDao.delete(selectedItem))
+                    .thenRun(libraryTableView.getItems()::clear)
+                    .thenRun(this::loadLibraries)
+                    .thenRun(() -> actionLogger.log("Library deleted"));
         }
     }
 
@@ -219,5 +229,10 @@ public class MainController {
     @Autowired
     public void setAddLibraryDialogController(AddLibraryDialogController addLibraryDialogController) {
         this.addLibraryDialogController = addLibraryDialogController;
+    }
+
+    @Autowired
+    public void setActionLogger(ActionLogger actionLogger) {
+        this.actionLogger = actionLogger;
     }
 }

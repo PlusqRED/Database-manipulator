@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-
 <?import com.jfoenix.controls.JFXButton?>
 <?import com.jfoenix.controls.JFXComboBox?>
+<?import com.jfoenix.controls.JFXSpinner?>
 <?import com.jfoenix.controls.JFXTextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <AnchorPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="200.0" prefWidth="600.0"
@@ -14,5 +14,6 @@
                       promptText="Введите количество"/>
         <JFXButton layoutX="258.0" layoutY="155.0" onAction="#add" style="-fx-background-color: #aaffaa;"
                    text="Добавить"/>
+        <JFXSpinner fx:id="spinner" layoutX="51.0" layoutY="75.0" visible="false"/>
     </children>
 </AnchorPane>
