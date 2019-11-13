@@ -1,10 +1,14 @@
 package com.grape.lab.controller;
 
+import com.grape.lab.Main;
+import com.grape.lab.auth.AppUserSession;
 import com.grape.lab.dao.BookDao;
 import com.grape.lab.dao.LibraryDao;
 import com.grape.lab.model.Book;
 import com.grape.lab.model.Library;
+import com.grape.lab.model.Role;
 import com.grape.lab.util.ActionLogger;
+import com.jfoenix.controls.JFXButton;
 import com.jfoenix.controls.JFXTextField;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
@@ -29,6 +33,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Comparator.comparing;
 
@@ -40,6 +45,20 @@ public class MainController {
     private AddEditBookDialogController addEditBookDialogController;
     private AddLibraryDialogController addLibraryDialogController;
     private boolean reversedCustomSort;
+    @FXML
+    private JFXButton addLibraryBtn;
+
+    @FXML
+    private JFXButton deleteLibraryBtn;
+
+    @FXML
+    private JFXButton addBtn;
+
+    @FXML
+    private JFXButton editBtn;
+
+    @FXML
+    private JFXButton deleteBtn;
 
     @FXML
     private TableView<Book> bookTableView;
@@ -49,6 +68,9 @@ public class MainController {
 
     @FXML
     private TableView<Library> libraryTableView;
+    private Stage stage;
+
+    private AppUserSession userSession;
 
     public MainController(BookDao bookDao, LibraryDao libraryDao) {
         this.bookDao = bookDao;
@@ -56,10 +78,24 @@ public class MainController {
     }
 
     public void initialize() {
+        checkPrivileges();
         prepareBookColumns();
         prepareLibraryColumns();
         loadData();
         loadLibraries();
+    }
+
+
+    private void checkPrivileges() {
+        Role userRole = userSession.getUser().getRole();
+        if (!userRole.isRead()) {
+            Stream.of(libraryTableView, bookTableView)
+                    .forEach(tv -> tv.setVisible(false));
+        }
+        if (!userRole.isWrite()) {
+            Stream.of(addBtn, editBtn, deleteBtn, addLibraryBtn, deleteLibraryBtn)
+                    .forEach(btn -> btn.setVisible(false));
+        }
     }
 
     public void customSort() {
@@ -221,6 +257,25 @@ public class MainController {
         }
     }
 
+    @FXML
+    @SneakyThrows
+    void signOut() {
+        stage.close();
+        Stage authStage = new Stage();
+        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getClassLoader().getResource("view/auth.fxml"));
+        AuthController authController = Main.ctx.getBean("authController", AuthController.class);
+        authController.setParentStage(authStage);
+        fxmlLoader.setController(authController);
+        authStage.setScene(new Scene(fxmlLoader.load()));
+        authStage.setTitle("Авторизация");
+        authStage.show();
+    }
+
+    @Autowired
+    public void setUserSession(AppUserSession userSession) {
+        this.userSession = userSession;
+    }
+
     @Autowired
     public void setAddEditBookDialogController(AddEditBookDialogController addEditBookDialogController) {
         this.addEditBookDialogController = addEditBookDialogController;
@@ -234,5 +289,9 @@ public class MainController {
     @Autowired
     public void setActionLogger(ActionLogger actionLogger) {
         this.actionLogger = actionLogger;
+    }
+
+    public void setParentStage(Stage stage) {
+        this.stage = stage;
     }
 }
