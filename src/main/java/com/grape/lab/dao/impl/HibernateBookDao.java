@@ -14,10 +14,10 @@ import java.util.List;
 @Transactional
 public class HibernateBookDao implements BookDao {
 
-    //language=SQL
+    //language=HQL
     private final static String FIND_ALL_QUERY =
             "from book";
-    //language=SQL
+    //language=HQL
     private final static String FIND_BY_NAME_IGNORE_CASE_QUERY =
             "from book where lower(name) like :name";
     private SessionFactory sessionFactory;

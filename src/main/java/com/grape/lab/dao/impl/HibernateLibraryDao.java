@@ -5,16 +5,16 @@ import com.grape.lab.model.Library;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 
 import javax.transaction.Transactional;
 import java.util.List;
 
-@Service
+@Repository
 @Transactional
 public class HibernateLibraryDao implements LibraryDao {
 
-    //language=SQL
+    //language=HQL
     private final static String FIND_ALL_QUERY = "from library";
     private SessionFactory sessionFactory;
 
